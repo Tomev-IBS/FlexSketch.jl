@@ -30,6 +30,7 @@ function update!(S::Sketch, val::Real)
     end
 
     if diagnose(S)
+        println("I'd like to majorupdate!, but oh well...")
         majorupdate!(S)
     end    
     
@@ -37,16 +38,27 @@ function update!(S::Sketch, val::Real)
 end # function update!
 
 
-function minorupdate!(S::Sketch, substream::Vector{Real})
+function minorupdate!(S::Sketch, substream::Vector{<:Real})
     """ Minor update function from the paper. """
-    return
+    for i in 1:length(S.models) - 1  # Last model is not updated.
+        singleupdate!(S.models[i], substream)
+        S.data_lengths[i] += length(substream)
+    end
 end # function minorupdate!
 
-function singleupdate!()
-    return
+function singleupdate!(h::Histogram, substream::Vector{<:Real})
+    for v in substream
+        push!(h, v)  # push! for histogram behaves exactly as algorithm needs.
+    end
 end # function singleupdate!
 
 function diagnose(S::Sketch)
+    """ """
+    # If there are no models, then major update is required.
+    if length(S.models) == 0
+        return true
+    end 
+    
     return false
 end # function diagnose
 
@@ -70,7 +82,7 @@ function add_model!(S::Sketch, model::Histogram)
     # TODO TR: prepend!(S.data_lengths, DATA_LENGTH_FROM_MODEL)
 end # function add_model!
 
-function build_model(data::Vector{float})
+function build_model(data::Vector{<:Real})
     """ """
     println("Got vector of length ")
 
