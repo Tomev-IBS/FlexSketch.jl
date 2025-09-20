@@ -21,6 +21,7 @@ end # struct Sketch
 
 function update!(S::Sketch, val::Real)
     
+    minorupdate!(S, [val])
     prepend!(S.buffer, val)
 
     # If buffer is not yet filled, do nothing.
@@ -28,15 +29,31 @@ function update!(S::Sketch, val::Real)
         return
     end
 
+    if diagnose(S)
+        majorupdate!(S)
+    end    
     
-    # The magic happens here
-    
-    # 
-    println("\tClearing the buffer of size: $(length(S.buffer))")
     empty!(S.buffer)
-    println("\t\tCurrent buffer length: $(length(S.buffer))")
-
 end # function update!
+
+
+function minorupdate!(S::Sketch, substream::Vector{Real})
+    """ Minor update function from the paper. """
+    return
+end # function minorupdate!
+
+function singleupdate!()
+    return
+end # function singleupdate!
+
+function diagnose(S::Sketch)
+    return false
+end # function diagnose
+
+function majorupdate!(S::Sketch)
+    return
+end # function majorupdate
+
 
 function add_model!(S::Sketch, model::Histogram)
     """ Adds new model. """
