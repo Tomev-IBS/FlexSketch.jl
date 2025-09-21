@@ -16,6 +16,10 @@ export update!
     buffer :: Vector{Real} = []
     models :: Vector{Histogram} = []
     data_lengths :: Vector{Int} = []
+
+    # Auxiliary
+    sorted_entries :: Vector{Real} = []  # For quantule computation
+
 end # struct Sketch
 
 
@@ -29,14 +33,15 @@ function update!(S::Sketch, val::Real)
         return
     end
 
+    sortinputs!(S)
+
     if diagnose(S)
-        println("I'd like to majorupdate!, but oh well...")
         majorupdate!(S)
     end    
     
+    empty!(S.sorted_entries)
     empty!(S.buffer)
 end # function update!
-
 
 function minorupdate!(S::Sketch, substream::Vector{<:Real})
     """ Minor update function from the paper. """
@@ -52,6 +57,18 @@ function singleupdate!(h::Histogram, substream::Vector{<:Real})
     end
 end # function singleupdate!
 
+function sortinputs!(S::Sketch)
+    """ Sort inputs for quantile computation. """
+    append!(S.sorted_entries, S.buffer)
+
+    for m in S.models
+        for i in 1:length(m.weights)
+            append!(S.sorted_entries, [m.edges[1][i + 1] for _ in 1:length(m.weights)])
+        end
+    end
+    sort!(S.sorted_entries)
+end # function sortinputs!
+
 function diagnose(S::Sketch)
     """ """
     # If there are no models, then major update is required.
@@ -59,34 +76,47 @@ function diagnose(S::Sketch)
         return true
     end 
     
+    # TODO TR: What if there are models?
     return false
 end # function diagnose
 
 function majorupdate!(S::Sketch)
-    return
-end # function majorupdate
-
-
-function add_model!(S::Sketch, model::Histogram)
-    """ Adds new model. """
-
-    # Ensure there's space for the new model.
-    while length(S.models) >= n_models
+    # Ensure there's space for the new model.    
+    while length(S.models) >= S.n_models
             pop!(S.models)
             pop!(S.data_lengths)
         return
     end
 
+    bins = computebins(S)
+    model = fit(Histogram, bins, S.buffer, closed=:left)
+
     # Add new model to the front of the models list.
-    prepend!(S.models, model)
-    # TODO TR: prepend!(S.data_lengths, DATA_LENGTH_FROM_MODEL)
-end # function add_model!
+    pushfirst!(S.models, model)
+    pushfirst!(S.data_lengths, sum(model.weights))
 
-function build_model(data::Vector{<:Real})
-    """ """
-    println("Got vector of length ")
+end # function majorupdate
 
-end # build_model
+function computebins(S::Sketch)
+    """ Compute bins for the new histogram. """
+    bins = []
 
+    for j in 1:S.n_bins
+        q = j / (S.n_bins + 2)
+        append!(bins, findquantile(S, q))
+    end
+
+    return bins
+end # function computebins
+
+
+function findquantile(S::Sketch, q::Real)
+    """
+        Find quantile q of the data in S.buffer and S.models. 
+
+        This is implemented by searching through previously prepared S.sorted_entries.
+    """
+    return S.sorted_entries[ceil(Int, length(S.sorted_entries) * q)]
+end 
 
 end # module FlexSketch
