@@ -1,6 +1,13 @@
 # Experiments for DEDSDA article.
-using CSV
+using FlexSketch
+using ProgressBars
 
-for data in readlines("data/stream_14_1.csv")
-    println(parse(Float64, data))
+
+S = Sketch()
+
+for data in ProgressBar(readlines("data/stream_14_1.csv"))
+    update!(S, parse(Float64, data))
 end
+
+println(S)
+
