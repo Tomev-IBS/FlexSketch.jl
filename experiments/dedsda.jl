@@ -1,10 +1,11 @@
 # Experiments for DEDSDA article.
 using FlexSketch
+using ProgressBars
 
 
 S = Sketch()
 
-for data in readlines("data/stream_14_1.csv")
+for data in ProgressBar(readlines("data/stream_14_1.csv"))
     update!(S, parse(Float64, data))
 end
 
