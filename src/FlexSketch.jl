@@ -5,10 +5,12 @@ using LinearAlgebra
 
 export Sketch
 export update!
+export probability
 
 @kwdef struct Sketch
-    λ :: Float64 = 2.5  # TODO TR: What's that?
+    λ :: Float64 = 2.5  # Weight update hyperparameter.
     γ :: Float64 = 0.4  # Diagnose threshold.
+    α :: Vector{Real} = []
     
     buffer_size :: Int = 30
     n_models :: Int = 3
@@ -27,9 +29,10 @@ function update!(S::Sketch, val::Real)
 
     minorupdate!(S, [val])
     prepend!(S.buffer, val)
-
+    
     # If buffer is not yet filled, do nothing.
     if length(S.buffer) < S.buffer_size
+        updateweights!(S)
         return
     end
 
@@ -37,6 +40,7 @@ function update!(S::Sketch, val::Real)
         majorupdate!(S)
     end   
     
+    updateweights!(S)
     empty!(S.buffer)
 
 end # function update!
@@ -101,7 +105,7 @@ function majorupdate!(S::Sketch)
     end
 
     bins = computebins(S)
-    model = fit(Histogram, S.buffer, bins, closed=:left)
+    model = fit(Histogram, S.buffer, bins, closed=:right)
     
     edf(x) = ecdf(S.buffer)(x)
     model.weights = [ceil(edf((bins[j+1]) - edf(bins[j])) * length(S.buffer)) for j in 1:length(bins)-1]
@@ -193,6 +197,57 @@ function ppf(S::Sketch)
     end
 
     return f
+end
+
+function probability(S::Sketch, x::Real)
+    """ """
+    p = 0
+
+    for i in 1:length(S.models)
+        model = S.models[i]
+        p += S.α[i] * probability(model, x)
+    end
+
+    return p
+end
+
+function probability(h::Histogram, x::Real)
+    """ """
+    p = 0
+    bins = h.edges[1]
+    
+    for i in 1:length(h.weights)
+        if bins[i] <= x <= bins[i + 1]
+            p = h.weights[i] / (sum(h.weights) * (bins[i + 1] - bins[i]))
+            break
+        end 
+    end 
+
+    return p
+end
+
+function updateweights!(S::Sketch)
+    """ """
+    if length(S.data_lengths) == 0
+        return
+    end
+
+    weights = [0.0 for _ in S.data_lengths]
+    
+    for i in 1:length(S.data_lengths)
+        if i == 1
+            n = 0
+        else
+            n = S.data_lengths[i - 1]
+        end 
+
+        w = exp(- n * S.λ / S.buffer_size)
+        weights[i] = w
+    end
+
+    empty!(S.α)
+    append!(S.α, [w / sum(weights) for w in weights])
+
 end
 
 end # module FlexSketch
