@@ -19,7 +19,6 @@ export update!
     data_lengths :: Vector{Int} = []
 
     # Auxiliary
-    sorted_entries :: Vector{Real} = []  # For quantule computation
     ε_steps :: Int = 100
 
 end # struct Sketch
@@ -34,13 +33,10 @@ function update!(S::Sketch, val::Real)
         return
     end
 
-    sortinputs!(S)
-
     if diagnose(S)
         majorupdate!(S)
     end   
     
-    empty!(S.sorted_entries)
     empty!(S.buffer)
 
 end # function update!
@@ -58,18 +54,6 @@ function singleupdate!(h::Histogram, substream::Vector{<:Real})
         push!(h, v)  # push! for histogram behaves exactly as algorithm needs.
     end
 end # function singleupdate!
-
-function sortinputs!(S::Sketch)
-    """ Sort inputs for quantile computation. """
-    append!(S.sorted_entries, S.buffer)
-
-    for m in S.models
-        for i in 1:length(m.weights)
-            append!(S.sorted_entries, [m.edges[1][i + 1] for _ in 1:length(m.weights)])
-        end
-    end
-    sort!(S.sorted_entries)
-end # function sortinputs!
 
 function diagnose(S::Sketch)
     """ """
