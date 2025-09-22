@@ -1,2 +1,4 @@
 .vscode
 quick_tests.jl
+*.txt
+*.csv
